@@ -1,0 +1,614 @@
+---
+title: "Exam 3 - take home"
+author: "Vinay Vaida"
+date: "2023-12-05"
+output:
+  word_document: default
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+# 1. Maximum Likelihood Estimation 
+(10 pts) 
+
+The MLE for estimating the probability $\pi$ in a null model.
+
+In the notes I have explained how the parameters for the logistic model (the $\beta$’s) are obtained by maximizing the log likelihood function. We are going to do the same but for a simpler model.
+
+a) Write down the log likelihood for the null model, that is, the model where all probabilities are the same: $\pi_i = \pi =\frac{e^{\beta_0}}{1+e^{\beta_0}}$.
+
+Follow the notes and replace the $\pi_i$’s by $\pi$.
+Answer:
+
+L = 
+Ans: a) The log likelihood for the null model, where all probabilities are the same ($\pi_i = \pi$), is given by:
+
+\[ L = \sum_{i=1}^{n} \log P(Y_i | \pi) \]
+
+In this case, for binary outcomes (0 or 1), we can express \( P(Y_i | \pi) \) as:
+
+\[ P(Y_i | \pi) = \pi^{Y_i} \cdot (1 - \pi)^{1 - Y_i} \]
+
+Substitute this expression into the log likelihood:
+
+\[ L = \sum_{i=1}^{n} \left[ Y_i \log(\pi) + (1 - Y_i) \log(1 - \pi) \right] \]
+
+Now, since \(\pi = \frac{e^{\beta_0}}{1+e^{\beta_0}}\), we can express \(\log(\pi)\) and \(\log(1 - \pi)\) in terms of \(\beta_0\):
+
+\[ L = \sum_{i=1}^{n} \left[ Y_i \log\left(\frac{e^{\beta_0}}{1+e^{\beta_0}}\right) + (1 - Y_i) \log\left(1 - \frac{e^{\beta_0}}{1+e^{\beta_0}}\right) \right] \]
+
+
+b) Find $\log L$, the log likelihood function and find it's derivative with respect to $\pi$.
+ 
+Find the MLE estimator for $\pi$ as the place where the maximum is achieved.
+
+
+Hint: follow the notes.
+Answer:
+\[ \log L = \sum_{i=1}^{n} \left[ Y_i \log(\pi) + (1 - Y_i) \log(1 - \pi) \right] \]
+
+To find the derivative with respect to \(\pi\), we take the derivative of the above expression:
+
+\[ \frac{d(\log L)}{d\pi} = \sum_{i=1}^{n} \left[ \frac{Y_i}{\pi} - \frac{1 - Y_i}{1 - \pi} \right] \]
+
+Setting this derivative to zero gives the MLE estimator for \(\pi\):
+
+\[ \sum_{i=1}^{n} \left[ \frac{Y_i}{\pi} - \frac{1 - Y_i}{1 - \pi} \right] = 0 \]
+
+
+If you are at a loss with this problem, ask for help.
+
+# 2. Logistic Regression
+(20 pts)
+
+#### Titanic dataset:
+
+Variables: 
+
+* PassengerId: Passenger ID
+
+* Survived: Passenger Survival Indicator
+
+* Pclass: Passenger Class
+
+* Name: Name
+
+* Sex: Sex
+
+* Age: Age
+
+* SibSp: Number of Siblings/Spouses Aboard
+
+* Parch: Number of Parents/Children Aboard
+
+* Ticket: Ticket Number
+
+* Fare: Passenger Fare
+
+* Cabin: Cabin
+
+* Embarked: Port of Embarkation
+
+
+```{r}
+## Load the datasets
+library(titanic)
+str(titanic_train)
+```
+This library has 2 datasets, titanic_train and titanic_test.
+We will work with titanic_train
+
+```{r}
+sum(is.na(titanic_train))
+mytitanic<-titanic_train[complete.cases(titanic_train),]
+n<-dim(mytitanic)[1]
+set.seed(1)
+indx<-sample(1:n,.8*n)
+titanic_mytrain<-mytitanic[indx,]
+titanic_mytest<-mytitanic[-indx,]
+```
+
+
+Create a logistic model with no interactions. Be careful about the variables you include.
+```{r}
+titanicmod1<-glm(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked, 
+                   data = titanic_mytrain, 
+                   family = "binomial")
+summary(titanicmod1)
+
+```
+
+a) (4pts) For this section, you need to know what the variables are. 
+
+* Interpret the coefficient for Pclass-
+  - The coefficient for Pclass is -1.304993.
+   - The interpretation is that for a one-unit increase in Pclass (moving from a lower class to a higher class), the log-odds of survival decrease by approximately 1.30.
+   - The negative sign indicates that a higher passenger class is associated with a lower likelihood of survival.
+
+
+* Interpret the coefficient for Sex -
+   - The coefficient for Sexmale is -2.875194.
+   - The interpretation is that being male (compared to being female) is associated with a decrease in the log-odds of survival by approximately 2.88.
+   - The negative sign indicates that males are less likely to survive compared to females.
+
+* Interpret the coefficient for Age -
+  - The coefficient for Age is -0.044061.
+   - The interpretation is that for a one-unit increase in age, the log-odds of survival decrease by approximately 0.044.
+   - The negative sign indicates that older passengers are less likely to survive.
+   
+
+
+
+Visualization of fitted values vs variables in model.
+```{r}
+library(visreg)
+visreg(titanicmod1, "Pclass", partial = TRUE,main="Log OR|Pclass") #plots the log odds ratios
+visreg(titanicmod1, "Pclass", scale="response", partial=FALSE,main="Prob. of Survival|Pclass")  #plots probabilities
+
+visreg(titanicmod1, "Sex", partial = TRUE,main="Log OR| Sex")
+visreg(titanicmod1, "Sex",scale="response", partial=FALSE,main="Prob. of Survival|Sex")  #plots probabilities
+```
+
+Some more visualizations of fitted vs Pclass:
+
+```{r}
+x<-jitter(titanic_mytrain$Pclass)
+plot(titanic_mytrain$Survived~x,col=c("blue","green","red")[titanic_mytrain$Pclass],xlab="tsize",main="Survival vs Pclass")
+points(x,titanicmod1$fitted,col=c("blue","green","red")[titanic_mytrain$Pclass],pch=22)
+#add fitted values curve
+lines(lowess(titanic_mytrain$Pclass,titanicmod1$fitted),col="black",lwd=2)
+#look at a threshold of .5
+abline(h=.5,col='grey')
+```
+
+```{r}
+x<-jitter(titanic_mytrain$Pclass)
+scol<-ifelse(titanic_mytrain$Sex=="female",2,4)
+plot(titanic_mytrain$Survived~x,col=scol,xlab="tsize",
+     pch=19,cex=.7,main="Survival vs Pclass and gender")
+points(x,titanicmod1$fitted,col=scol,pch=22,cex=.5)
+#add fitted values curve
+lines(lowess(titanic_mytrain$Pclass[titanic_mytrain$Sex=="female"],titanicmod1$fitted[titanic_mytrain$Sex=="female"]),col=2,lwd=2,cex=.5)
+lines(lowess(titanic_mytrain$Pclass[titanic_mytrain$Sex=="male"],titanicmod1$fitted[titanic_mytrain$Sex=="male"]),col=4,lwd=2,cex=.5)
+#look at a threshold of .5
+abline(h=.5,col='grey')
+```
+
+
+Same thing with ggplot
+
+```{r}
+library(ggplot2)
+df<-titanic_mytrain[,c(2,5)]
+df$x<-x
+ggplot(df,aes(x=x,y=Survived,col=Sex))+geom_point()+
+  geom_point(aes(x=x,y=titanicmod1$fitted.values,col=Sex))
+```
+
+
+
+
+
+
+
+
+
+b) (2pts) Create a logistic model with interactions. 
+```{r}
+titanicmod2<-glm(Survived ~ Pclass * Sex + Age + SibSp + Parch + Fare + Embarked, 
+                   data = titanic_mytrain, 
+                   family = "binomial")
+
+summary(titanicmod2)
+```
+
+b2) (1pts) Do backwards selection, use trace = 0
+
+```{r}
+titanicmod3<-step(titanicmod2, direction = "backward", trace = 0)
+summary(titanicmod3)
+```
+
+b3) (4pts) Interpret all interaction terms coefficients.
+
+Pclass:Sex (Interaction):
+
+Estimate: 1.533478
+Interpretation: This represents the additional change in the log-odds of survival for the interaction effect between Pclass and Sex. It shows how the effect of Pclass on the log-odds of survival differs between the levels of Sex.
+
+
+c) (3pts) Compare titanicmod1,titanicmod3 (using anova)
+```{r}
+anova_output<-anova(titanicmod1, titanicmod3, test = "Chi")
+print(anova_output)
+
+```
+
+
+Write the null and alternative hypothesis corresponding to this test:
+
+Null hypothesis:
+
+Alternative hypothesis:
+
+p-value: 
+
+Conclusion: 
+
+In the context of an analysis of deviance table, the null and alternative hypotheses are typically formulated as follows:
+
+**Null hypothesis (H0):**
+- The null hypothesis asserts that the simpler model (Model 2) is just as good as the more complex model (Model 1). In terms of deviance, it means that the additional interaction term (`Pclass:Sex`) in Model 1 does not significantly improve the model fit compared to the reduced model (Model 2).
+
+**Alternative hypothesis (H1):**
+- The alternative hypothesis suggests that the more complex model (Model 1) is a better fit than the simpler model (Model 2). In terms of deviance, it implies that the additional interaction term (`Pclass:Sex`) in Model 1 contributes significantly to the model fit.
+
+**p-value:**
+- The p-value (given as 13.551) is the probability of observing a test statistic as extreme as the one calculated (or more extreme) under the assumption that the null hypothesis is true.
+
+**Conclusion:**
+- If the p-value is greater than the significance level (commonly set at 0.05), you would fail to reject the null hypothesis. This would suggest that there is not enough evidence to conclude that the additional interaction term in Model 1 significantly improves the model fit compared to the simpler Model 2.
+- If the p-value is less than the significance level, you would reject the null hypothesis. This would suggest that the additional interaction term in Model 1 contributes significantly to the model fit, and Model 1 is preferred over the simpler Model 2.
+
+In this case, the p-value is not explicitly provided, but it is given as 13.551. Typically, a p-value larger than 0.05 would lead to a failure to reject the null hypothesis. However, without the exact p-value, the conclusion cannot be determined definitively. If the p-value is less than 0.05, it would suggest evidence against the null hypothesis, favoring Model 1.
+
+
+
+d) (1pt) Plot the assessment plots for titanicmod3
+```{r}
+par(mfrow=c(2,2))  # Setting up a 2x2 layout for the plots
+plot(titanicmod3)
+```
+
+
+
+### Confusion matrix and statistics
+
+e) (1pt) Compute the confusion matrix for both models on the testing data.
+
+```{r}
+library(caret)
+# for first model
+fit_test<-predict(titanicmod1,newdata=titanic_mytest[,-2],type="response")
+cm1<-confusionMatrix(data=as.factor((fit_test>.5)*1), reference=as.factor(titanic_mytest$Survived))
+cm1$table
+
+
+# for second model
+fit_test<-predict(titanicmod3, newdata = titanic_mytest[,-2], type = "response")
+cm3 <- confusionMatrix(data = as.factor((fit_test > 0.5) * 1), reference = as.factor(titanic_mytest$Survived))
+cm3$table
+```
+
+
+Which of the two models performs better?
+
+accuracy for titanicmod1 model=(69+37)/(69+23+14+37)= 0.74
+accuracy for titanicmod3 model=(75+36)/(75+24+8+36)= 0.77
+The model with a higher accuracy is considered better. Hence model "titanicmod3" is better model than model "titanicmod1"
+
+
+f) (2pt) Compute the auc for both models
+```{r}
+library(Epi)
+# titanic1
+library(pROC)
+# For model 1
+roc1 <- roc(titanic_mytest$Survived, predict(titanicmod1, newdata = titanic_mytest[,-2]))
+# Display AUC values
+paste("AUC for Model 1:", round(auc(roc1), 4))
+
+```
+
+```{r}
+# For model 3
+roc3 <- roc(titanic_mytest$Survived, predict(titanicmod3, newdata = titanic_mytest[,-2]))
+paste("AUC for Model 3:", round(auc(roc3), 4))
+#titanic3
+
+```
+
+AUC for titanic1:0.7944
+
+AUC for titanic3: 0.8024
+
+g) (2pts) Write a short comment comparing the two models.
+
+Model 1 has an AUC of 0.7944.
+Model 3 has a slightly higher AUC of 0.8024.
+A higher AUC generally indicates better discrimination. Therefore, based on the AUC values:
+Model 3 performs slightly better in terms of discriminatory power compared to Model 1.
+
+True Positives (TP): Model 3 has more true positives (36) compared to Model 1 (37).
+False Positives (FP): Model 3 has fewer false positives (8) compared to Model 1 (14).
+True Negatives (TN): Model 3 has more true negatives (75) compared to Model 1 (69).
+False Negatives (FN): Model 1 has fewer false negatives (23) compared to Model 3 (24).
+In summary, Model 3 generally performs better than Model 1 in terms of true positives and true negatives, indicating improved classification accuracy.
+
+
+
+
+# 3. Breast Cancer
+
+(40 pts)
+Variables: 
+* age and agegp, 
+* menopause,
+* tsize and tumorsize"
+* invnodes2 and inv.nodes
+* node.caps
+* deg.malig: severity of malignity  
+* breast (left/right) and breastquad (L/R and up/central/low)
+* irradiate
+* Class and Y. 
+
+We will use Y as the response variable
+
+```{r}
+breast <- read.csv("C:/Users/vinay/OneDrive/Documents/Applied Stats/Assignment 6/breast.csv")
+
+str(breast)
+```
+
+Missing data have been coded with ?. Change it ti NA and then remove the NA's.
+```{r}
+breast[breast == "?"] <- NA  # Replace "?" with NA
+# Remove rows with NA values
+newbreast <-na.omit(breast )  # removes all rows with missing data NA
+```
+
+
+a) (2pt) Develop a logistic model with tsize and deg.malig
+```{r}
+logmod<-glm(Y ~ tsize + deg.malig, data = newbreast, family = "binomial")
+summary(logmod)
+```
+
+
+
+
+b) (4pts) Develop a logistic model with all variables. Use age but not agegp, tsize but not tumorsize, and invnodes2 but not inv.nodes.
+```{r}
+logmod2<-glm(Y ~ age + menopause + tsize + invnodes2 + node.caps + deg.malig + breast + breastquad + irradiate, 
+               data = newbreast, 
+               family = "binomial")
+summary(logmod2)
+```
+
+c) (1pt) Use backwards selection to clean the model.
+```{r}
+logmod3<-step(logmod2, direction = "backward")
+summary(logmod3)
+```
+
+
+
+d) (4pts) Compare the models using anova.
+```{r}
+# Fit the models
+logmod <- glm(Y ~ tsize + deg.malig, data = newbreast, family = "binomial")
+logmod_all <- glm(Y ~ age + menopause + tsize + invnodes2 + node.caps + deg.malig + breast + breastquad + irradiate,
+                  data = newbreast, family = "binomial")
+logmod3 <- glm(Y ~ menopause + tsize + node.caps + deg.malig + irradiate, data = newbreast, family = "binomial")
+
+# Perform ANOVA
+anova_result <- anova(logmod, logmod_all, logmod3, test = "Chisq")
+print(anova_result)
+
+```
+
+
+Write the null and alternative hypothesis corresponding to this test:
+Null hypothesis: The models (Model 1 and Model 2, as well as Model 1 and Model 3) are equivalent, and the additional predictors in the more complex models (Model 2 and Model 3) do not significantly contribute to explaining the variability in the response variable Y.
+
+Alternative hypothesis: There is a significant difference in deviance between the simpler model (Model 1) and the more complex models (Model 2 and Model 3), indicating that the additional predictors in the complex models contribute significantly to explaining the variability in the response variable Y.
+
+p-value: The p-values associated with the tests are 0.06615 (Model 1 vs. Model 2) and 0.76307 (Model 1 vs. Model 3).
+
+
+
+e) (4pts) Plot the fitted values of logmod3 over a plot of Y vs tsize. Color according to deg.malig. Add a horizontal line at y=.25. If using ggplot: geom_hline(yintercept = .22,col="grey")
+
+```{r}
+
+library(ggplot2)
+
+# Plotting the fitted values
+plot_data <- data.frame(tsize = newbreast$tsize, fitted_values = predict(logmod3, type = "response"))
+plot_data$deg.malig <- as.factor(newbreast$deg.malig)
+
+ggplot(plot_data, aes(x = tsize, y = fitted_values, color = deg.malig)) +
+  geom_point() +
+  geom_hline(yintercept = 0.25, col = "grey") +
+  labs(title = "Fitted Values vs. Y",
+       x = "tsize",
+       y = "Fitted Values") +
+  theme_minimal()
+```
+
+f) (4pts) Use the variables in the logmod3  but now add a polynomial of degree 2 on tsize and deg.malig.
+
+```{r}
+# Create a new variable for the squared term of tsize
+newbreast$tsize_sq <- newbreast$tsize^2
+
+# Create a new variable for the squared term of deg.malig
+newbreast$deg_malig_sq <- newbreast$deg.malig^2
+
+# Logistic model with polynomial terms
+logmod4 <- glm(Y ~ menopause + tsize + tsize_sq + node.caps + deg.malig + deg_malig_sq + irradiate, 
+               family = "binomial", 
+               data = newbreast)
+
+# Display the summary
+summary(logmod4)
+```
+
+
+g) (4pts) Compare logmod3 and logmod4 using anova
+```{r}
+# Compare logmod3 and logmod4 using ANOVA
+anova_result <- anova(logmod3, logmod4, test = "Chi")
+
+# Display the result
+print(anova_result)
+
+
+```
+Which model is preffered?
+
+-- The results indicate that Model 2 with the polynomial terms (\(\text{tsize\_sq}\) and \(\text{deg\_malig\_sq}\)) has a lower residual deviance compared to Model 1, and the difference in deviance is statistically significant (\(Pr(>\chi) = 0.0384\)). This suggests that Model 2 is preferred over Model 1.
+In conclusion, the addition of the polynomial terms improves the model fit, and Model 2 is preferred for predicting.
+
+
+h) (1pt) Plot the assessment plots for logmod4
+```{r}
+# Plot assessment plots for logmod4
+plot(logmod4, which = c(1, 2, 3, 5))
+
+
+
+```
+
+
+i) (4pts) Plot the fitted values over a plot of Y vs tsize. Color according to deg.malig. Add a horizontal line at y=.25. If using ggplot: geom_hline(yintercept = .25,col="grey")
+
+```{r}
+
+# Predicted values from logmod4
+predicted_probs <- predict(logmod4, type = "response")
+
+# Create a data frame for plotting
+plot_data <- data.frame(Y = newbreast$Y, tsize = newbreast$tsize, deg_malig = newbreast$deg.malig, Predicted = predicted_probs)
+
+# Plot the fitted values over Y vs tsize
+library(ggplot2)
+ggplot(plot_data, aes(x = tsize, y = Y, color = factor(deg_malig))) +
+  geom_point() +
+  geom_line(aes(y = Predicted), color = "blue", size = 1) +
+  geom_hline(yintercept = 0.25, linetype = "dashed", color = "grey") +
+  labs(title = "Fitted Values vs Y vs tsize",
+       x = "tsize",
+       y = "Y") +
+  theme_minimal()
+
+
+```
+
+
+
+
+
+
+j) (6pts) Use Epi::ROC to plot the ROC curve and select a threshold for logmod3 and logmod4. Compute the auc for both models. Note: instead of poly(tsize,2) use tsize +I(tsize^2), and do the same for deg.malig.
+
+auc for logmod3:            Suggested threshold: 
+
+auc for logmod4:             Suggested threshold: 
+
+Which model is better?
+
+```{r}
+# Load the Epi package
+library(Epi)
+
+# Create a new variable for the squared term of tsize and deg.malig
+newbreast$tsize_sq <- newbreast$tsize^2
+newbreast$deg_malig_sq <- newbreast$deg.malig^2
+
+# Logistic model with polynomial terms for logmod3
+logmod3 <- glm(Y ~ menopause + tsize + node.caps + deg.malig + irradiate, 
+               family = "binomial", 
+               data = newbreast)
+
+# Logistic model with polynomial terms for logmod4
+logmod4 <- glm(Y ~ menopause + tsize + tsize_sq + node.caps + deg.malig + deg_malig_sq + 
+                 irradiate, 
+               family = "binomial", 
+               data = newbreast)
+
+# ROC curve for logmod3
+roc_mod3 <- roc(newbreast$Y, predict(logmod3, type = "response"))
+plot(roc_mod3, main = "ROC Curve for logmod3")
+auc_mod3 <- auc(roc_mod3)
+suggested_threshold_mod3 <- coords(roc_mod3, "best")$threshold
+cat("AUC for logmod3:", auc_mod3, "\nSuggested threshold:", suggested_threshold_mod3, "\n")
+
+# ROC curve for logmod4
+roc_mod4 <- roc(newbreast$Y, predict(logmod4, type = "response"))
+plot(roc_mod4, main = "ROC Curve for logmod4")
+auc_mod4 <- auc(roc_mod4)
+suggested_threshold_mod4 <- coords(roc_mod4, "best")$threshold
+cat("AUC for logmod4:", auc_mod4, "\nSuggested threshold:", suggested_threshold_mod4, "\n")
+
+# Compare the models
+if (auc_mod3 > auc_mod4) {
+  cat("Model logmod3 is better.\n")
+} else if (auc_mod3 < auc_mod4) {
+  cat("Model logmod4 is better.\n")
+} else {
+  cat("Both models are equal.\n")
+}
+
+
+```
+The model with a higher AUC is generally considered better for classification purposes. The suggested threshold is the one that maximizes sensitivity plus specificity on the ROC curve. It's crucial to interpret the AUC along with the context of your specific problem and requirements.
+
+k) (4pts) Compute the confusion matrix using logmod3 and logmod4 and a threshold of .25
+
+confusion matrix using logmod3: 
+
+confusion matrix using logmod4:
+
+Which model is better?
+
+```{r}
+library(caret)
+
+# Predictions using logmod3 and logmod4 with threshold 0.25
+fit_logmod3 <- predict(logmod3, newdata = newbreast, type = "response")
+fit_logmod4 <- predict(logmod4, newdata = newbreast, type = "response")
+
+# Convert probabilities to binary predictions using threshold 0.25
+pred_logmod3 <- ifelse(fit_logmod3 > 0.25, 1, 0)
+pred_logmod4 <- ifelse(fit_logmod4 > 0.25, 1, 0)
+
+# True outcomes
+actual <- newbreast$Y
+
+# Confusion matrix for logmod3
+cm_logmod3 <- confusionMatrix(data = as.factor(pred_logmod3), reference = as.factor(actual))
+print("Confusion matrix using logmod3:")
+print(cm_logmod3$table)
+
+# Confusion matrix for logmod4
+cm_logmod4 <- confusionMatrix(data = as.factor(pred_logmod4), reference = as.factor(actual))
+print("Confusion matrix using logmod4:")
+print(cm_logmod4$table)
+
+```
+To determine which model is better, you might consider metrics such as accuracy, precision, recall, or F1 score. In this case, accuracy is a commonly used metric:
+Accuracy for logmod3: (TP + TN) / (TP + TN + FP + FN) = (57 + 119) / (57 + 119 + 24 + 77) ≈ 0.648
+Accuracy for logmod4: (TP + TN) / (TP + TN + FP + FN) = (56 + 135) / (56 + 135 + 25 + 61) ≈ 0.689
+Considering accuracy as the evaluation metric, logmod4 appears to have a slightly higher accuracy compared to logmod3. Therefore, based on accuracy, logmod4 might be considered a better-performing model.
+
+
+l) (2pt) Write a brief comment on the two models.
+
+
+Both logmod3 and logmod4 are logistic regression models built to predict the binary outcome variable Y. 
+
+1. **logmod3:**
+   - Utilizes menopause, tsize, node.caps, deg.malig, and irradiate as predictor variables.
+   - The model includes linear terms for tsize and deg.malig.
+   - Achieved an AUC of approximately 0.762.
+
+2. **logmod4:**
+   - Similar to logmod3 but introduces polynomial terms for tsize and deg.malig, including quadratic terms (tsize_sq and deg_malig_sq).
+   - Achieved a slightly higher AUC of approximately 0.773.
+
+**Comparison:**
+- The introduction of polynomial terms in logmod4 allows the model to capture potential non-linear relationships between tsize, deg.malig, and the log-odds of the response variable.
+- Despite the slight improvement in AUC, the choice between logmod3 and logmod4 depends on factors such as interpretability, computational complexity, and the specific goals of the analysis.
+- Logmod4 may be preferred when there is evidence of non-linear relationships in the data, but it also comes with the cost of increased complexity. The decision should be made based on a balance between model performance and interpretability.

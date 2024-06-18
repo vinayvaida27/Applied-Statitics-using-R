@@ -1,0 +1,196 @@
+---
+title: "A2 MAT565"
+author: "KR"
+date: "2023-09-11"
+output: pdf_document
+---
+
+
+# Assignment 2: Multivariate Regression
+
+
+1 (20) The data file abrasion contains the results from a small scale study (Davies, O.L. and Goldsmith, P.L. Statistical methods in Research and Production, 1972),  of the relation between rubber's resistance to abrasion (Y) and rubber hardness (X1) and rubber tensile strength (X2).
+
+The data set abrasion is included in this assignment.
+
+Open RStudio
+Import the data set abrasion into RStudio.
+```{r}
+abrasion <- read.csv("C:\Users\vinay\OneDrive\Documents\Applied Stats\Assignment 2")
+abrasion
+```
+
+
+(a) (1) We want to obtain the scatter plot of our variables to see their relationships (scatterplot matrix) and their correlation matrix to see how strong are the relationships. Use ggpairs() that is part of the ggplot2 library to do both at the same time.
+
+```{r}
+
+
+
+```
+
+
+(b) (1) Use the lm() function to run the regression model and do a summary of the model to see the results
+
+```{r}
+model<-NULL
+```
+
+(c) (1) Which predictors appear to have a statistically significant
+relationship to the response? 
+
+Ans:
+
+(d) (1) In the output, find the coefficient of determination (adjusted R-squared). Round your answer to 4 decimal places. 
+
+Ans:
+
+(e) (1) In the output, find the estimate for $\sigma$, that is s or the residual standard error. Round your answer to 2 decimal places.
+
+Ans:
+
+(f) (3) Assessment plots. Comment on your findings regarding the model assumptions and any anusual observations.
+```{r}
+plot(model)
+```
+
+
+
+
+(g) (2) Variance-Covariance matrix for betas
+
+Use the design matrix:
+```{r}
+X<-as.matrix(cbind(1,abrasion[,2:3]))
+```
+to compute the Variance-Covariance matrix for betas.
+
+- Matrix multiplication: A %*% B
+- Inverse of a matrix: solve(A)
+
+```{r}
+
+```
+
+Use your results to find the variance for $\hat \beta_1$. 
+
+Verify that the standard errors for $\beta_1$ nand $\beta_2$ are the same as those you obtained in summary(model).
+
+
+
+
+
+
+
+(h) (1) Use your model to obtain the mean abrasion loss for rubber with hardness 71 an tensile strength 201. Round your answer to 2 decimal places.
+
+```{r}
+
+```
+
+
+(i) (1) If we want to use your model to obtain a 98% confidence interval for the mean abrasion loss for rubber with hardness x1=71 and tensile strength x2=201, what formula should we use?
+
+In the formulas, a= vector corresponding to new observation .
+
+A. \[\hat y \pm t_{\alpha/2} s \sqrt{a (X'X)^{-1}a'}\]
+
+
+B.	\[\hat y \pm t_{\alpha/2} \frac s{\sqrt{n}}\]
+
+C.	\[\hat y \pm t_{\alpha/2} s\]
+	
+D.	\[\hat y \pm t_{\alpha/2} s \sqrt{ (X'X)^{-1}(x-x\bar{x})^2}\]
+
+E.  \[\hat y \pm t_{\alpha/2} s \sqrt{1+a (X'X)^{-1}a'}\]
+
+
+(j) (1) Use your model to obtain a 98% confidence interval for the mean abrasion loss for rubber with hardness 71 (x1) an tensile strength 201 (x2). You can use the command predict()
+
+```{r}
+
+```
+
+
+(k) (5)
+* Create a function that computes the p\% confidence bands for the mean prediction.
+* Create a function that computes the p\% confidence bands for individual prediction.
+
+```{r}
+
+```
+
+Make a scatterplot of Loss ~ x1, add to it the fitted values. Then use your functions to add confidence bands for mean prediction and for individual predictions. Use cifferent colors so that we can distinguish one from the other. Put a title to yhe graph.
+
+```{r}
+
+```
+
+
+(l) (2) After examining 
+
+* the scatter plots,
+* the correlation between the variables,
+* the summary of the model,
+* R-squared and s, and
+* the F-test, 
+
+briefly comment on the adequacy of the model fit. Make sure to comment about the items in the bullets and do not write more than 3 lines.
+
+
+
+
+
+
+```{r}
+
+```
+
+
+
+
+
+2. (10) This question involves the use of multiple linear regression on the
+Auto data set in the package ISLR2. (You need to install the package ISLR2 first)
+
+
+
+```{r}
+library(ISLR2)
+head(Auto)
+```
+
+
+(a) (4) Use the lm() function to perform a multiple linear regression
+with mpg as the response and all other variables except name as
+the predictors. Use the summary() function to print the results.
+Comment on the output. For instance:
+
+  i. Is there a relationship between the predictors and the response? Interpret the result of the global F-test.
+  
+  ii. Which predictors appear to have a statistically significant relationship to the response?
+  
+  iii. What does the coefficient for the year variable suggest? That is, how do we interpret the meaning of the coefficient for the predictor "year"? 
+
+
+```{r}
+
+```
+
+
+(b) (3) Use the plot() function to produce diagnostic plots of the linear
+regression fit. 
+
+  i. Comment on any problems you see with the fit.
+
+  ii. Do the residual plots suggest any unusually large outliers? 
+  
+  iii. Does the leverage plot identify any observations with unusually high
+leverage?
+
+
+(c) (3) Try a few different transformations of the variables, such as
+$\log(X)$, $\sqrt{X}$, $X^2$. ($X$ refers to either the response or any of the predictor variables). 
+Comment on your findings. Include the analysis you have doen to arrive to your findings.
+
+

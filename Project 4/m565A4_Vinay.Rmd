@@ -1,0 +1,465 @@
+---
+title: "m565A4"
+author: "Vinay Vaida"
+date: "2023-10-19"
+output:
+  word_document: default
+  pdf_document: default
+---
+
+```{r}
+options(repos = c(CRAN = "https://cran.r-project.org/"))
+#chooseCRANmirror(ind = 1)  # Choose the first mirror
+```
+
+
+
+1. (20) In this exercise, we will generate simulated data, and will then use
+this data to perform best subset selection.
+
+(a) Use the rnorm() function to generate a predictor $X$ of length
+$n = 100$, as well as a noise vector $\epsilon$ of length $n = 100$.
+
+
+```{r}
+# Set a seed for reproducibility (for easy debugging of the code and long-term use)
+set.seed(26)
+# Generate a predictor variable X of length n = 100
+X <- rnorm(n = 100, mean = 0, sd = 1)
+head(X)
+# Generate a noise vector epsilon of length n = 100
+e <- rnorm(n = 100, mean = 0, sd = 1)
+head(e)
+```
+
+
+(b) Generate a response vector $Y$ of length $n = 100$ according to
+the model $Y = \beta_0 + \beta_1 X + \beta_2X^2 + \beta_3X^3 + \epsilon$,
+where $\beta_0, \beta_1, \beta_2$, and $\beta_3$ are constants of your choice.
+
+```{r}
+# Define your chosen constants
+beta_0 <- 3 # beta_0 value
+beta_1 <- 6 #beta_1 value
+beta_2 <- 9 #beta_2 value
+beta_3 <- 12  #beta_3 value
+
+
+# Calculate the response vector Y using the specified model
+Y <- beta_0 + beta_1 * X + beta_2 * X^2 + beta_3 * X^3 + e
+
+#First few values of Y
+head(Y)
+```
+
+
+(c) Use the regsubsets() function to perform best subset selection
+in order to choose the best model containing the predictors
+$X,X^2,\ldots,X^{10}$. 
+
+Note that you will need to use the data.frame() function to
+create a single data set containing both $X$ and all the powers in consideration, and $Y$. Example: for $X^3$ use, in the data.frame, $X3=X^3$.
+
+Use regsubsets() with nbest = 3,really.big = T, nvmax = 10
+
+```{r}
+# Create a data frame with X, X^2, ..., X^10 and Y
+#mydata <- data.frame(X, X2 = X^2, X3 = X^3, X4 = X^4, X5 = X^5, X6 = X^6, X7 = X^7, X8 = X^8, X9 = X^9, X10 = X^10, Y)
+
+
+X_df <- data.frame(
+  X = X,
+  X2 = X^2,
+  X3 = X^3,
+  X4 = X^4,
+  X5 = X^5,
+  X6 = X^6,
+  X7 = X^7,
+  X8 = X^8,
+  X9 = X^9,
+  X10 = X^10
+)
+
+Y_df <- data.frame(Y)
+
+mydata<-cbind(Y_df, X_df)
+
+# Load the 'leaps' library
+install.packages("leaps")
+library(leaps)
+
+# Use regsubsets() to perform best subset selection
+best <- regsubsets(Y ~ ., data = mydata, nbest = 3, really.big = TRUE, nvmax = 10)
+
+head(mydata)
+```
+
+Before proceeding, follow structure in file modelselection Example: Heights. The goal is to find the best model obtained according to Cp, BIC, and adjusted $R^2$.
+
+Report the coefficients of the best model obtained. 
+
+See the results:
+```{r}
+# Get the summary of the best models
+sbest <- summary(best)
+sbest
+```
+
+See what is inside sbest:
+```{r}
+names(sbest)
+```
+
+
+To see the models and their Cp: (you can do the same with adjr2 and bic)
+```{r}
+cbind(sbest$which ,sbest$cp)
+```
+
+Follow the notes in modelselection Example: Heights to see how to select the best model according to the various metrics.
+```{r}
+mybestmodel<-function(Xnames,Yname,dataset,p,crit="bic"){
+  if(crit=="Cp"){
+    n<-dim(dataset)[1]
+    fullMSE=summary(lm(as.formula(paste(Yname,"~.")),data=dataset))$sigma^2
+  }
+  varsel<-lapply(0:p, function(x) combn(p,x)) 
+  
+  modcrit<-numeric(p); form<-character(p)
+  for(k in 1:p){
+    s<-dim(varsel[[k+1]])[2] 
+    tempform<-character(s); tempcrit<-numeric(s)
+    for(j in 1:s){
+      temp <- Xnames[varsel[[k+1]][,j]]
+      tempform[j]<- ifelse(length(temp)>1,
+      paste(temp, collapse = " + "), temp)
+      tempform[j] <- paste(Yname, tempform[j],sep='~')
+      tempmod<-lm(as.formula(tempform[j]),data=dataset)
+      if(crit=="aic"){
+        tempcrit[j] <- AIC(tempmod)
+      }
+      if(crit=="bic"){
+        tempcrit[j] <- BIC(tempmod)
+      }
+      if(crit=="r2"){
+        tempcrit[j] <- summary(tempmod)$adj
+      }
+      if(crit=="Cp"){
+        tempcrit[j]<-sum(tempmod$resˆ2)/fullMSE+2*(k+1)-n
+      }
+    }
+    # best model of size k
+    if(crit %in% c("aic", "bic")){
+      best<-which.min(tempcrit)
+    }
+    if(crit == "r2"){
+      best<-which.max(tempcrit)
+    }
+    if(crit=="Cp"){
+      best<-which.min(abs(tempcrit[j]-(k+1)))
+    }
+    form[k]<-tempform[best]
+    modcrit[k]<-tempcrit[best]
+  }
+  if(crit %in% c("aic", "bic")){
+    out<-form[which.min(modcrit)]
+  }
+  if(crit == "r2"){
+    out<-form[which.max(modcrit)]
+  }
+  if(crit=="Cp"){
+    out<-form[which.min(abs(modcrit[-p]-(2:p)))]
+  }
+  return(out)
+}
+
+p<-length(names(mydata))-1 
+Xnames<-names(mydata)[-1]
+Yname<-"Y"
+dataset<-mydata
+bicform<-mybestmodel(Xnames, Yname, mydata, p, crit="bic")
+bicform
+
+Criteria<-function(model){
+  out<-data.frame(`p+1`=length(model$coef),
+                  R2adj=summary(model)$adj,
+                  AIC=AIC(model),
+                  BIC=BIC(model))
+  return(out)
+}
+
+modbic<-lm(as.formula(bicform), data=mydata)
+modbic
+
+aicform<-mybestmodel(Xnames, Yname, mydata, p, crit="aic")
+aicform
+
+modaic<-lm(as.formula(aicform), data=mydata)
+modaic
+
+cpform<-mybestmodel(Xnames, Yname, mydata, p, crit="Cp")
+cpform
+
+modCp<-lm(as.formula(cpform), data=mydata)
+modCp
+
+r2form<-mybestmodel(Xnames, Yname, mydata, p, crit="r2")
+r2form
+
+modr2<-lm(as.formula(r2form), data=mydata)
+modr2
+```
+
+(d) Now find the best model using backward stepwise selection. 
+
+```{r}
+#backwards
+modback<-step(lm(Y~.,data=mydata),trace=0, direction = "backward")
+```
+
+
+(e) Now fit a lasso model to the simulated data, again using $X,X^2,
+\ldots, X^{10}$ as predictors. Use cross-validation to select the optimal
+value of $\lambda$. Create plots of the cross-validation error as a function
+of $\lambda$. Report the resulting coefficient estimates, and discuss the
+results obtained.
+
+```{r}
+install.packages("glmnet")
+library(glmnet)
+
+X_matrix <- as.matrix(X_df)
+Y_vector <- as.vector(Y_df$Y)
+
+lasso.mod <- cv.glmnet(X_matrix, Y_vector, alpha = 1)
+plot(lasso.mod)
+
+best_lambda <- lasso.mod$lambda.min
+cat("Optimal lambda:", best_lambda, "\n")
+
+lasso_coef <- coef(lasso.mod, s = best_lambda)
+cat("Coefficient estimates for the optimal lambda:\n")
+print(lasso_coef)
+```
+
+
+
+(f) Display the adjR^2, BIC and AIC for all the models
+
+```{r}
+rbind(bicm=Criteria(modbic),
+      aicm=Criteria(modaic),
+      adjr2m=Criteria(modr2),
+      cpm=Criteria(modCp),
+      bsel=Criteria(modback)
+)
+```
+
+
+(g) Now use cross validation to select the final model.
+
+```{r}
+cv.lm <- function(data, formulae, nfolds = 5) {
+  data <- na.omit(data) # remove missing values
+  formulae <- sapply(formulae, as.formula)
+  n <- nrow(data)
+  fold.labels <- sample(rep(1:nfolds, length.out = n))
+  mses <- matrix(NA, nrow = nfolds, ncol = length(formulae))
+  colnames <- as.character(formulae)
+  for (fold in 1:nfolds) {
+    test.rows <- which(fold.labels == fold)
+    train <- data[-test.rows, ]
+    test <- data[test.rows, ]
+    for (form in 1:length(formulae)) {
+      current.model <- lm(formula = formulae[[form]], data = train)
+      predictions <- predict(current.model, newdata = test)
+      test.responses <- eval(formulae[[form]][[2]], envir = test)
+      test.errors <- test.responses - predictions
+      mses[fold, form] <- mean(test.errors^2)
+    }
+  }
+  return(colMeans(mses))
+}
+
+set.seed(1999)
+formulae<-c(formula(modbic),
+            formula(modaic),
+            formula(modr2),
+            formula(modCp),
+            formula(modback))
+
+mse<-cv.lm(data=mydata, formulae, nfolds = 5)
+print(mse)
+```
+From the above obtained values, we observe that the model with AIC metric has the least error value. Therefore, the model with AIC is the final model.
+
+Following are the Error values in order:
+
+modelAIC > modelBIC > modback > modr2 > modCp
+
+2. (30) The perils of post-selection inference, and data splitting to the rescue.
+
+(a) Generate a 1000 x 101 array, where all the entries are IID standard 
+Gaussian variables. 
+
+We'll call the first column the response variable $Y$, 
+and the others the predictors $X_1,\ldots,X_{100}$. 
+
+```{r}
+mydata<-as.data.frame(matrix(rnorm(1000*101),ncol=101))
+names(mydata)<-c("Y",paste("X",1:100,sep=""))
+mydata[1:3,1:5]
+```
+
+
+By design, there is no true relationship between the response and the predictors (but all the usual linear-Gaussian-modeling assumptions hold).
+
+(b) 
+  (i) Estimate the model $Y=\beta_0+\beta_1X_1+\beta_{50}X_{50}+\epsilon$
+    Extract the p-value for the **F test** of the whole model. 
+```{r}
+getpvalue <- function(model, mydata) {
+  model <- lm(model, data = mydata)
+  sum<-summary(model)
+  pvalue<-pf(sum$fstatistic[1], sum$fstatistic[2], sum$fstatistic[3], lower.tail=FALSE)
+  return (pvalue)
+}
+
+getpvalue(Y~X1+X50, mydata)
+```
+
+
+  (ii) Repeat the simulation (steps a and b), estimation and testing 
+    100 times, and plot the histogram of the p-values. 
+    What does it look like? What should it look like?
+```{r}
+ pvalue_list <- numeric(100)
+for (i in 1:100){
+  gendata<-as.data.frame(matrix(rnorm(1000*101),ncol=101))
+  names(gendata)<-c("Y",paste("X",1:100,sep=""))
+  pvalue_list[i]<-getpvalue(Y~X1+X50, gendata)
+}
+
+# Create a histogram
+ hist(pvalue_list, main = "Histogram", xlab = "P-value", ylab = "Frequency", col = "pink", border = "black")
+```
+
+
+
+(c) 
+  (i) From step (a), use the step function to select a linear model by        backward stepwise selection. 
+```{r}
+final_model <- step(lm(Y~., mydata), direction = "backward", trace = 0)
+model_backward <- function(model, data){
+  final_model <- step(model, direction = "backward", trace = 0)
+  sum<-summary(final_model)
+  pvalue<-pf(sum$fstatistic[1], sum$fstatistic[2], sum$fstatistic[3], lower.tail=FALSE)
+  return (pvalue)
+
+}
+model <- lm(Y~., data = mydata)
+model_backward(model, mydata)
+```
+  
+
+  (ii) Extract the p-value for the **F-test** of the selected model. 
+    Repeat 100 times and plot the histogram of p-values. 
+    Explain what's going on.
+```{r}
+pvalue_list_back <- list()
+for (i in 1:100){
+  gendata<-as.data.frame(matrix(rnorm(1000*101),ncol=101))
+  names(gendata)<-c("Y",paste("X",1:100,sep=""))
+  model <- lm(Y~., data = gendata)
+  pvalue_list_back[i]<-model_backward(model, gendata)
+}
+combined_data <- unlist(pvalue_list_back)
+# Create a histogram
+hist(combined_data, main = "Histogram", xlab = "P-value", ylab = "Frequency", breaks = 100, col = "pink", border = "black")
+
+```
+
+
+
+
+(d) Again, 
+
+  (i) use step() to select a model based on one random 1000x101 array.        This acts as a training dataset. Compute the in-sample error.
+  
+```{r}
+traindata<-as.data.frame(matrix(rnorm(1000*101),ncol=101))
+names(traindata)<-c("Y",paste("X",1:100,sep=""))
+
+trainmodel <- lm(Y~., data = traindata)
+step_model <- step(trainmodel, trace = 0)
+
+summary(step_model)
+```
+```{r}
+in_sample_error <- mean(residuals(step_model)^2)
+
+cat("In-sample Mean Squared Error:", in_sample_error, "\n")
+```
+  
+
+  (ii) Now re-estimate the selected model on a new 1000 x 101 array, 
+    and extract the new p-value. This acts as a testing dataset. 
+    Compute the generalization (prediction) error.
+    
+```{r}
+testdata<-as.data.frame(matrix(rnorm(1000*101),ncol=101))
+names(testdata)<-c("Y",paste("X",1:100,sep=""))
+
+sum<-summary(step_model)
+pvalue<-pf(sum$fstatistic[1], sum$fstatistic[2], sum$fstatistic[3], lower.tail=FALSE)
+
+pvalue
+
+predictions_test <- predict(step_model, newdata = testdata)
+
+generalization_error <- mean((testdata$Y - predictions_test)^2)
+
+cat("Generalization Error:", generalization_error, "\n")
+```
+    
+
+(iii) Repeat 100 times, with new selection and inference sets each time,
+  and plot the histogram of p-values, the histograms of in-sample errors
+  and the histogram of generalization errors.
+```{r}
+isr_list <- numeric(100)
+gen_list <- numeric(100)
+pvalue_list_step <- numeric(100)
+
+for(i in 1:100){
+  train_gen_data<-as.data.frame(matrix(rnorm(1000*101),ncol=101))
+  names(train_gen_data)<-c("Y",paste("X",1:100,sep=""))
+  
+  test_gen_data<-as.data.frame(matrix(rnorm(1000*101),ncol=101))
+  names(test_gen_data)<-c("Y",paste("X",1:100,sep=""))
+  
+  genmodel <- lm(Y~., data = train_gen_data)
+  final_gen_model <- step(genmodel, trace = 0)
+  
+  sum<-summary(final_gen_model)
+  
+  predictions_test <- predict(final_gen_model, newdata = test_gen_data)
+  
+  pvalue_list_step[i]<-pf(sum$fstatistic[1], sum$fstatistic[2], sum$fstatistic[3], lower.tail=FALSE)
+  
+  isr_list[i] <- mean(residuals(final_gen_model)^2)
+  
+  gen_list[i] <- mean((test_gen_data$Y - predictions_test)^2)
+  
+}
+
+hist(pvalue_list_step, main = "Histogram", xlab = "P-value", ylab = "Frequency", col = "lightblue", border = "black")
+
+hist(isr_list, main = "Histogram", xlab = "in-sample-error", ylab = "Frequency", col = "lightblue", border = "black")
+
+hist(gen_list, main = "Histogram", xlab = "generalization error", ylab = "Frequency", col = "lightblue", border = "black")
+
+```
+
+
+

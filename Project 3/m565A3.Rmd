@@ -1,0 +1,361 @@
+---
+title: "Building Regression Models"
+author: "Vinay Vaida"
+date: "2023-09-25"
+output:
+  word_document: default
+  pdf_document: default
+---
+
+BUILDING REGRESSION MODELS FOR PREDICTION
+
+General principles
+Our general principles for building regression models for prediction are as follows:
+
+1. Include all input variables that, for substantive reasons, might be expected to be important in predicting the outcome.
+
+2. It is not always necessary to include these inputs as separate predictors—for example, sometimes several inputs can be averaged or summed to create a “total score” that can be used as a single predictor in the model.
+
+3. For inputs that have large effects, consider including their interactions as well.
+
+4. We suggest the following strategy for decisions regarding whether to exclude a variable from a prediction model based on expected sign and statistical signifi- cance (typically measured at the 5% level; that is, a coefficient is “statistically significant” if its estimate is more than 2 standard errors from zero):
+
+    (a) If a predictor is not statistically significant and has the expected sign, it is generally fine to keep it in. It may not help predictions dramatically but is also probably not hurting them.
+    
+    (b) If a predictor is not statistically significant and does not have the expected sign (for example, incumbency having a negative effect on vote share), consider removing it from the model (that is, setting its coefficient to zero).
+
+    (c) If a predictor is statistically significant and does not have the expected sign, then think hard if it makes sense. (For example, perhaps this is a country such as India in which incumbents are generally unpopular; see Linden, 2006.) Try to gather data on potential lurking variables and include them in the analysis.
+
+    (d) If a predictor is statistically significant and has the expected sign, then by all means keep it in the model.
+
+
+These strategies do not completely solve our problems but they help keep us from making mistakes such as discarding important information.
+
+## 1. Predicting the yields of mesquite bushes
+
+The outcome variable is the **total weight** (in grams) of photosynthetic material as derived from actual harvesting of the bush. The input variables are:
+
+- diam1: diameter of the canopy (the leafy area of the bush)
+in meters, measured along the longer axis of the bush
+
+- diam2: canopy diameter measured along the shorter axis 
+
+- canopy.height: height of the canopy
+
+- total.height: total height of the bush
+
+- density: plant unit density (# of primary stems per plant unit)
+
+- group: group of measurements (0 for the first group, 1 for the second group)
+
+
+```{r}
+library(ggplot2)
+library(GGally)
+
+mesquite<-read.csv("C:/Users/vinay/OneDrive/Documents/Applied Stats/assignment 3/mesquite.dat", sep="", stringsAsFactors=TRUE)
+```
+
+Observe variables and relationships with ggpairs, except for index variables.
+```{r}
+
+ggpairs(mesquite[,-(1:2)])
+```
+
+Make a table of the Group variable:
+```{r}
+table(mesquite$Group)
+```
+
+
+Leaf weight is skewed to the right. Taking log may make it more symmetric. We'll do that later, but for now, let's look at the distribution of log(LeafWt):
+```{r}
+hist(log(mesquite$LeafWt))
+```
+
+Compare relationships of LeafWt with Diam1
+
+```{r}
+par(mfrow=c(2,2))
+
+plot(LeafWt~Diam1,mesquite)
+plot(log(LeafWt)~Diam1,mesquite)
+plot(log(LeafWt)~log(Diam1),mesquite)
+```
+
+
+1. a) (5pts)
+In this situation, taking logs seem to me the relationships more linear. Fit a model where all numeric variables have been transformed with log(). Make a summary of the model and look at the assessment plots.
+
+```{r}
+logLW<-lm(log(LeafWt) ~ log(Diam1) + log(Diam2) + log(TotHt) + log(CanHt) + log(Dens), data=mesquite)
+summary(logLW)
+plot(logLW)
+
+```
+
+Remove log(CanHt) and log(Dens) and repeat.
+
+```{r}
+logLW2<-lm(log(LeafWt) ~ log(Diam1) + log(Diam2) + log(TotHt), data=mesquite)
+summary(logLW2)
+plot(logLW2)
+```
+
+
+
+1. b) (3)
+Let's plot by group. The group is being set in the aestetics (aes) of the plot with col=Group.
+```{r}
+library(ggplot2)
+
+ggplot(mesquite,aes(x=log(Diam1),y=log(LeafWt),col=Group))+geom_point()+stat_smooth(method="lm")
+```
+
+Run a model with interactions between Group and Diam1, and see if there is a significant improvement. Print the summary and look at assessment plots.
+
+```{r}
+logLW3 <- lm(log(LeafWt) ~ log(Diam1)*Group + log(Diam2) + log(TotHt), data=mesquite)
+summary(logLW3)
+plot(logLW3)
+
+```
+
+
+1.c) (5) 
+Using model logLW3, write the equation corresponding to each of the groups ALS and MCD. Interpret the effect of Diam1.
+
+
+
+case ALS:
+logLW3=4.4715+0.8309 log(Diam1)+1.0939 log(Diam2)+0.6490 log(TotHt)
+
+case MCD:
+logLW3=4.4715+0.8309log(Diam1)+1.0939log(Diam2)+0.6490log(TotHt)+0.8175-0.4700
+
+log(Diam1)=4.4715+0.3609 log(Diam1)+1.0939 log(Diam2)+0.6490 log(TotHt)+0.8175
+
+Effect:
+Case ALS: a one-unit increase in log(Diam1) is associated with an increase in log(LeafWt)
+by 0.8309 units, holding other variables constant.
+
+Case MCD: a one-unit increase in log(Diam1) is associated with an increase in log(LeafWt)
+by 0.3609 units, holding other variables constant.
+
+
+
+
+## 2. Earnings vs Height
+The folder **earnings** has data from the Work, Family, and Well-Being Survey (Ross, 1990). Pull out the data on earnings, sex, height, and weight.
+
+```{r}
+library(foreign)
+# again, you need the path of the place where you saved the heights.dta file
+ht<-read.dta("C:/Users/vinay/OneDrive/Documents/Applied Stats/assignment 3/heights.dta", convert.dates = TRUE, convert.factors = TRUE,missing.type = FALSE,convert.underscore = FALSE, warn.missing.labels = TRUE)
+ht
+
+
+```
+
+
+The relationships between the height variables is: height=12*height1+height2. So just use height for now.
+
+
+2. (a) In R, check the dataset and clean any unusually coded data. Keep only the observation with eranings > 0.
+
+```{r}
+library(dplyr)
+
+```
+
+```{r}
+ht<-select(ht,-c("height1","height2")) 
+names(ht)
+dim(ht)
+ht<-ht[complete.cases(ht),] # keep only complete cases
+dim(ht)
+ht<-subset(ht,earn>0)  # keep only positive earnings
+```
+
+
+(b) Do a preliminary data analysis. Consider summary and plots.
+
+```{r}
+ggpairs(ht,cardinalityThreshold=16)
+```
+
+
+(1) Make a summary of all variables:
+```{r}
+summary(ht)
+```
+
+(2) Which variables are categorical? How many categories do they have? Make tables for each category. Make sure those variables are treated as factors.
+
+```{r}
+str(ht)
+
+ht$sex<-as.factor(ht$sex)
+ht$race<-as.factor(ht$race)
+ht$hisp<-as.factor(ht$hisp)
+ht$ed<-as.factor(ht$ed)
+
+class(ht$sex)
+class(ht$race)
+class(ht$hisp)
+class(ht$ed)
+table(ht$sex)
+table(ht$race)
+table(ht$hisp)
+table(ht$ed)
+
+```
+categorical variables are : sex,race,hisp,ed sex has 2 categories race has 5 categories hisp
+has 2 categories ed has 16 categories
+
+
+
+```{r}
+str(ht)
+```
+
+
+Pay attention to variables that need to be treated as factors. Convert those variables to factor.
+
+(2) Plot only numerical variables using ggpairs
+```{r}
+numerical_vars <- sapply(ht, is.numeric)
+numerical_data <- ht[, numerical_vars]
+ggpairs(numerical_data)
+
+```
+
+Note: If later on you decide to include the variable yearbn, that a minute to think about what it means and if you should do something to it before using it. The survey was done in 1990. Think about this: a person whose yearbn=0 was born in what year? a person whose yearbn=99 was born in what year?
+
+
+
+
+2. (b) (2) Fit a linear regression model predicting earnings from height and print the model summary.
+
+```{r}
+htmod <- lm(earn ~ height, data=ht)
+summary(htmod)
+plot(htmod)
+
+```
+
+2. (c) (2) What transformation should you perform in order to interpret the intercept from this model as average earnings for people with average height?
+
+Transform the variable height and fit a new model of earn on the transformed variable. Print the summary of the model.
+
+```{r}
+
+ht$newHeight <- ht$height-mean(ht$height)
+modHeightA <- lm(earn~newHeight,ht)
+summary(modHeightA)
+plot(modHeightA)
+
+ggplot(ht,aes(x=newHeight,y=earn,col=sex))+geom_point()+
+geom_smooth(method = lm)
+
+```
+
+
+2. (d) (10) Fit some regression models with the goal of predicting earnings from some combination of sex, height, race and education. Be sure to try various transformations and interactions that might make sense. Choose your preferred model and justify. Use ggplot() with color equal the categorical variable on which you are considering interactions to guide your analysis.
+
+```{r}
+modHeightB<-lm(earn~sex*newHeight+race+hisp+ed,data=ht)
+summary(modHeightB)
+plot(modHeightB)
+ggplot(ht,aes(x=newHeight,y=earn,col=sex))+geom_point()+geom_smooth(method = lm)
+```
+
+```{r}
+modHeightC<-lm(earn~sex+race*newHeight+hisp+ed,data=ht)
+summary(modHeightC)
+plot(modHeightC)
+
+
+ggplot(ht,aes(x=newHeight,y=earn,col=race))+geom_point()+
+geom_smooth(method = lm)
+
+
+
+```
+
+
+```{r}
+modHeightD<-lm(earn~sex+race+hisp*newHeight+ed,data=ht)
+summary(modHeightD)
+plot(modHeightD)
+
+ggplot(ht,aes(x=newHeight,y=earn,col=hisp))+geom_point()+
+geom_smooth(method = lm)
+
+
+```
+
+```{r}
+modHeightE<-lm(earn~sex+race+hisp+ed*newHeight,data=ht)
+sd(ht$ed18)
+sd(ht$newHeight)
+summary(modHeightE)
+plot(modHeightE)
+
+
+ggplot(ht,aes(x=newHeight,y=earn,col=ed))+geom_point()+
+geom_smooth(method = lm)
+```
+
+2. (e) (3) Interpret all model coefficients.
+
+
+from modHeightB: case sex1: earn=9860.5+576.7 newHeight
+             case sex2: earn=9860.5+576.7 newHeight-9410.1-769.9 newHeight
+                            =450.4-193.2 newHeight
+             case sex1:Increase in one unit of newHeight result in increase of 576.7 units of earnings.
+             case sex2:Increase in one unit of newHeight result in decrease of 193.2 units of earnings.
+             
+from modHeightC:case race4: earn=12585.93-7647.26+291.19 newHeight-261.71 newHeight
+                            =4938.67+29.48 newHeight
+            Increase in one unit of newHeight result in increase of 29.48 units of earnings.
+
+from modHeightD:case hisp2: earn=9730.7+5065.1-296.6 newHeight+510.0 newHeight
+                            =14795.8+213.4 newHeight
+            Increase in one unit of newHeight result in increase of 213.4 units of earnings.
+            
+from modHeightE:case ed9: earn=17456.4-2238.7+1315.9 newHeight-623.7 newHeight
+                          =15217.7+692.2 newHeight
+            Increase in one unit of newHeight result in increase of 692.2 units of earnings.
+
+-------------------------------------------------------------------------
+
+In modHeightB:
+
+For sex1, earnings increase by 576.7 units for each one-unit increase in newHeight.
+For sex2, earnings decrease by 193.2 units for each one-unit increase in newHeight.
+In modHeightC:
+
+For race4, each one-unit increase in newHeight leads to a 29.48 unit increase in earnings.
+In modHeightD:
+
+For hisp2, an increase of one unit in newHeight results in an earnings increase of 213.4 units.
+In modHeightE:
+
+For ed9, earnings increase by 692.2 units for every one-unit increase in newHeight.
+
+ed18:newHeight = 28790.0 + 1.624 * newHeight
+
+So, the equation for "ed18" would be:
+
+ed18 = 28790.0 + 1.624 * newHeight
+
+
+3. (f) (2) Examine the outliers and points of influence in your model with influencePlot()
+```{r}
+library(car)
+influencePlot(modHeightE, id.method = "identify", main = "Influence Plot")
+```
+Write a sentence about your findings.
+
+The data points at 583, 1713, 1860, and 2020 exhibit a significant Cook's distance, indicating their strong influence on the model. This influence, in turn, affects the estimation of the model's coefficients. Therefore, it is advisable to conduct further analysis on these specific data points to improve the accuracy of the coefficient estimates.
